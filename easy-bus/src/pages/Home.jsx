@@ -1,31 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Clock, Radio, Smartphone, AlertCircle } from 'lucide-react';
 import { getStore } from '../utils/storage';
 
 export default function Home() {
   const navigate = useNavigate();
-  const routes = getStore("eb_routes", []);
-  const allTrips = getStore("eb_trips", []);
+  const [allTrips, setAllTrips] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [from, setFrom] = useState("Sangamner");
+  const [to, setTo] = useState("Kopargaon");
+  const [searchedBuses, setSearchedBuses] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const [from, setFrom] = useState("Kopargaon");
-  const [to, setTo] = useState("Kolpewadi");
-  const [searchedBuses, setSearchedBuses] = useState(allTrips);
-  const [hasSearched, setHasSearched] = useState(true);
+  useEffect(() => {
+    const loadedTrips = (getStore("eb_trips", [])).filter(t => t.tripStatus !== 'COMPLETED');
+    const loadedRoutes = getStore("eb_routes", []);
+    setAllTrips(loadedTrips);
+    setRoutes(loadedRoutes);
+
+    // Initial search
+    const matches = loadedTrips.filter(
+      t => t.from.toLowerCase() === from.toLowerCase() && t.to.toLowerCase() === to.toLowerCase()
+    );
+    setSearchedBuses(matches);
+    setHasSearched(true);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const matches = allTrips.filter(t => t.from === from && t.to === to);
+    const activeOnly = (getStore("eb_trips", [])).filter(t => t.tripStatus !== 'COMPLETED');
+    const matches = activeOnly.filter(
+      t => t.from.toLowerCase() === from.toLowerCase() && t.to.toLowerCase() === to.toLowerCase()
+    );
     setSearchedBuses(matches);
     setHasSearched(true);
   };
 
-  const cities = Array.from(new Set([...routes.map(r => r.from), ...routes.map(r => r.to)]));
+  // Unique city list
+  const cities = Array.from(new Set([
+    "Sangamner", "Kopargaon", "Kolpewadi", "Shirdi", "Rahata", "Yeola",
+    ...routes.map(r => r.from),
+    ...routes.map(r => r.to),
+    ...allTrips.map(t => t.from),
+    ...allTrips.map(t => t.to)
+  ]));
 
   return (
     <div className="min-w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
       <div className="max-w-5xl mx-auto px-4 py-8 w-full">
-        {/* Hero */}
+        {/* Hero Section */}
         <div className="text-center mb-8">
           <span className="inline-block bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1 rounded-full font-semibold mb-3 border border-emerald-500/20">
             College Innovation Prototype
@@ -52,16 +75,16 @@ export default function Home() {
               {cities.map(c => <option key={`to_${c}`} value={c}>{c}</option>)}
             </select>
           </div>
-          <button type="submit" className="md:self-end bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition">
+          <button type="submit" className="md:self-end bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer">
             <Search className="w-4 h-4" /> Find Buses
           </button>
         </form>
 
-        {/* Results */}
+        {/* Results View */}
         {hasSearched && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">{searchedBuses.length} Active Buses Found</h2>
+              <h2 className="text-lg font-bold">{searchedBuses.length} Active Bus{searchedBuses.length === 1 ? '' : 'es'} Operating on this Route</h2>
               <span className="text-xs text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-md border border-amber-400/20 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" /> Demonstration Data
               </span>
@@ -69,15 +92,18 @@ export default function Home() {
 
             {searchedBuses.length === 0 ? (
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-                No active buses currently running on this route.
+                No active buses currently found between <b className="text-white">{from}</b> and <b className="text-white">{to}</b>. (Start a trip from Driver Dashboard to see it appear here live!)
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {searchedBuses.map((bus) => (
-                  <div key={bus.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition flex flex-col justify-between shadow-lg">
+                  <div key={bus.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
                     <div>
                       <div className="flex justify-between items-start mb-3">
-                        <span className="text-lg font-black text-white">{bus.busNumber}</span>
+                        <div>
+                          <span className="text-lg font-black text-white tracking-wider">{bus.busNumber}</span>
+                          {bus.driverName && <p className="text-[11px] text-slate-400">Driver: {bus.driverName}</p>}
+                        </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${bus.tripStatus === 'ON_TIME' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
                           {bus.tripStatus}
                         </span>
@@ -87,7 +113,7 @@ export default function Home() {
                         <span>{bus.from} &rarr; {bus.to}</span>
                       </div>
                       <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2.5 my-3 flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Current: <b className="text-slate-200">{bus.currentLocation}</b></span>
+                        <span className="text-slate-400">Location: <b className="text-slate-200">{bus.currentLocation}</b></span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" /> ETA: {bus.etaMinutes}m
                         </span>
@@ -97,7 +123,7 @@ export default function Home() {
                       <div className="flex justify-between items-center text-[11px] text-slate-500 mb-3">
                         <span className="flex items-center gap-1">
                           {bus.trackingSource === 'BUS_GPS' ? <Radio className="w-3.5 h-3.5 text-blue-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-                          {bus.trackingSource === 'BUS_GPS' ? 'Vehicle GPS' : 'Driver Mobile GPS'}
+                          {bus.trackingSource === 'BUS_GPS' ? 'Vehicle Bus GPS' : 'Driver Mobile GPS'}
                         </span>
                         <span>{bus.lastUpdated}</span>
                       </div>
