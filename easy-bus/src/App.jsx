@@ -1,122 +1,72 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { initStorage, getStore } from './utils/storage';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import BusLiveStatus from './pages/BusLiveStatus';
+import HowItWorks from './pages/HowItWorks';
+import DriverAuth from './pages/DriverAuth';
+import DriverDashboard from './pages/DriverDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Simple Prototype Auth Guards
+const DriverGuard = ({ children }) => {
+  const driver = getStore("eb_active_driver", null);
+  return driver ? children : <Navigate to="/driver/login" />;
+};
+
+const AdminGuard = ({ children }) => {
+  const isAdmin = getStore("eb_admin_auth", false);
+  return isAdmin ? children : <Navigate to="/admin/login" />;
+};
+
+export default function App() {
+  useEffect(() => {
+    initStorage();
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <BrowserRouter>
+      <div className="bg-slate-950 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-slate-950">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/bus/:id" element={<BusLiveStatus />} />
+            
+            {/* Driver Routes */}
+            <Route path="/driver/login" element={<DriverAuth />} />
+            <Route path="/driver/dashboard" element={<DriverGuard><DriverDashboard /></DriverGuard>} />
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+            {/* Admin Prototype Routes */}
+            <Route path="/admin/login" element={<AdminLoginScreen />} />
+            <Route path="/admin/dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+          </Routes>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <Footer />
+      </div>
+    </BrowserRouter>
+  );
 }
 
-export default App
+// Inline Minimal Admin Login for Zero-Lag Prototype
+function AdminLoginScreen() {
+  const handleAdmin = (e) => {
+    e.preventDefault();
+    localStorage.setItem("eb_admin_auth", JSON.stringify(true));
+    window.location.href = "/admin/dashboard";
+  };
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center p-4">
+      <form onSubmit={handleAdmin} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm text-center">
+        <h2 className="text-xl font-bold text-white mb-2">Admin Demo Login</h2>
+        <p className="text-xs text-slate-400 mb-6">Demo Email: admin@easybus.demo</p>
+        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-sm">
+          Quick Access (Admin Portal)
+        </button>
+      </form>
+    </div>
+  );
+}
