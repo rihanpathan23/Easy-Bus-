@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Clock, Radio, Smartphone, AlertCircle } from 'lucide-react';
+import { Search, MapPin, Clock, Radio, Smartphone, AlertCircle, ExternalLink, Navigation } from 'lucide-react';
 import { getStore } from '../utils/storage';
 
 export default function Home() {
@@ -18,7 +18,6 @@ export default function Home() {
     setAllTrips(loadedTrips);
     setRoutes(loadedRoutes);
 
-    // Initial search
     const matches = loadedTrips.filter(
       t => t.from.toLowerCase() === from.toLowerCase() && t.to.toLowerCase() === to.toLowerCase()
     );
@@ -36,7 +35,6 @@ export default function Home() {
     setHasSearched(true);
   };
 
-  // Unique city list
   const cities = Array.from(new Set([
     "Sangamner", "Kopargaon", "Kolpewadi", "Shirdi", "Rahata", "Yeola",
     ...routes.map(r => r.from),
@@ -48,7 +46,7 @@ export default function Home() {
   return (
     <div className="min-w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
       <div className="max-w-5xl mx-auto px-4 py-8 w-full">
-        {/* Hero Section */}
+        {/* Header */}
         <div className="text-center mb-8">
           <span className="inline-block bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1 rounded-full font-semibold mb-3 border border-emerald-500/20">
             College Innovation Prototype
@@ -57,7 +55,7 @@ export default function Home() {
             Know Your Bus <span className="text-emerald-400">Before You Wait</span>
           </h1>
           <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-            Find active buses on your route, check estimated arrival time, and track bus availability with Easy Bus.
+            Route-First Discovery: Get operating bus numbers, check official MSRTC hardware tracking, or view driver live fallback GPS.
           </p>
         </div>
 
@@ -80,11 +78,11 @@ export default function Home() {
           </button>
         </form>
 
-        {/* Results View */}
+        {/* Results */}
         {hasSearched && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">{searchedBuses.length} Active Bus{searchedBuses.length === 1 ? '' : 'es'} Operating on this Route</h2>
+              <h2 className="text-lg font-bold">{searchedBuses.length} Bus{searchedBuses.length === 1 ? '' : 'es'} Operating on Route</h2>
               <span className="text-xs text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-md border border-amber-400/20 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" /> Demonstration Data
               </span>
@@ -92,44 +90,89 @@ export default function Home() {
 
             {searchedBuses.length === 0 ? (
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-                No active buses currently found between <b className="text-white">{from}</b> and <b className="text-white">{to}</b>. (Start a trip from Driver Dashboard to see it appear here live!)
+                No active buses found between <b className="text-white">{from}</b> and <b className="text-white">{to}</b>. Start a trip from Driver Dashboard to publish one.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {searchedBuses.map((bus) => (
                   <div key={bus.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
                     <div>
-                      <div className="flex justify-between items-start mb-3">
+                      {/* Top Bar */}
+                      <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-lg font-black text-white tracking-wider">{bus.busNumber}</span>
+                          <div className="text-xl font-black text-white tracking-wider">{bus.busNumber}</div>
                           {bus.driverName && <p className="text-[11px] text-slate-400">Driver: {bus.driverName}</p>}
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${bus.tripStatus === 'ON_TIME' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                          {bus.tripStatus}
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${bus.trackingSource === 'BUS_GPS' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                          {bus.trackingSource === 'BUS_GPS' ? 'OFFICIAL BUS GPS' : 'PHONE FALLBACK GPS'}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-400 flex items-center gap-1 mb-2">
+
+                      {/* Route */}
+                      <div className="text-xs text-slate-400 flex items-center gap-1 mb-3">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                         <span>{bus.from} &rarr; {bus.to}</span>
                       </div>
-                      <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2.5 my-3 flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Location: <b className="text-slate-200">{bus.currentLocation}</b></span>
+
+                      {/* Status Info */}
+                      <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-3 my-2 text-xs flex justify-between items-center">
+                        <span className="text-slate-400">Current: <b className="text-slate-200">{bus.currentLocation}</b></span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" /> ETA: {bus.etaMinutes}m
                         </span>
                       </div>
                     </div>
-                    <div>
-                      <div className="flex justify-between items-center text-[11px] text-slate-500 mb-3">
-                        <span className="flex items-center gap-1">
-                          {bus.trackingSource === 'BUS_GPS' ? <Radio className="w-3.5 h-3.5 text-blue-400" /> : <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-                          {bus.trackingSource === 'BUS_GPS' ? 'Vehicle Bus GPS' : 'Driver Mobile GPS'}
-                        </span>
-                        <span>{bus.lastUpdated}</span>
-                      </div>
-                      <button onClick={() => navigate(`/bus/${bus.id}`)} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 rounded-xl text-xs transition">
-                        View Live Status
-                      </button>
+
+                    {/* Dynamic Action Buttons based on GPS Selection */}
+                    <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+                      {bus.trackingSource === 'BUS_GPS' ? (
+                        <div>
+                          <div className="text-[11px] text-blue-300/80 bg-blue-950/40 border border-blue-900/50 p-2.5 rounded-xl mb-2 flex items-start gap-2">
+                            <Radio className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                            <span>This bus has hardware GPS active. Open official MSRTC app and search bus <b>{bus.busNumber}</b>.</span>
+                          </div>
+                          <button 
+                            onClick={() => alert(`Official MSRTC / Aapli ST integration demo:\nUse Bus Number: ${bus.busNumber} in official tracking.`)}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Check on MSRTC App (Use {bus.busNumber})
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-[11px] text-emerald-300/80 bg-emerald-950/40 border border-emerald-900/50 p-2.5 rounded-xl mb-2 flex items-start gap-2">
+                            <Smartphone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>Hardware GPS down. Tracking via Driver's live smartphone GPS broadcast.</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            {bus.liveCoordinates ? (
+                              <a 
+                                href={`https://www.google.com/maps?q=${bus.liveCoordinates.lat},${bus.liveCoordinates.lng}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 text-center"
+                              >
+                                <Navigation className="w-3.5 h-3.5" /> Live Map Link
+                              </a>
+                            ) : (
+                              <button 
+                                onClick={() => navigate(`/bus/${bus.id}`)}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 text-center"
+                              >
+                                <Navigation className="w-3.5 h-3.5" /> Live Map Link
+                              </button>
+                            )}
+
+                            <button 
+                              onClick={() => navigate(`/bus/${bus.id}`)} 
+                              className="bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 rounded-xl text-xs transition"
+                            >
+                              Timeline View
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
