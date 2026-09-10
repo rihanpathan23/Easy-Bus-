@@ -7,41 +7,49 @@ export default function Home() {
   const navigate = useNavigate();
   const [allTrips, setAllTrips] = useState([]);
   const [routes, setRoutes] = useState([]);
-  const [from, setFrom] = useState("Sangamner");
-  const [to, setTo] = useState("Kopargaon");
+  const [from, setFrom] = useState("Kopargaon");
+  const [to, setTo] = useState("Sangamner");
   const [searchedBuses, setSearchedBuses] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
-    const loadedTrips = (getStore("eb_trips", [])).filter(t => t.tripStatus !== 'COMPLETED');
+  // Storage se fresh active trips fetch karne ka robust function
+  const loadFreshData = (selectedFrom = from, selectedTo = to) => {
+    const rawTrips = getStore("eb_trips", []);
+    const activeOnly = rawTrips.filter(t => t.tripStatus !== 'COMPLETED');
     const loadedRoutes = getStore("eb_routes", []);
-    setAllTrips(loadedTrips);
+
+    setAllTrips(activeOnly);
     setRoutes(loadedRoutes);
 
-    const matches = loadedTrips.filter(
-      t => t.from.toLowerCase() === from.toLowerCase() && t.to.toLowerCase() === to.toLowerCase()
-    );
-    setSearchedBuses(matches);
-    setHasSearched(true);
-  }, []);
+    // Case insensitive aur trim-safe match
+    const cleanFrom = selectedFrom.trim().toLowerCase();
+    const cleanTo = selectedTo.trim().toLowerCase();
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const activeOnly = (getStore("eb_trips", [])).filter(t => t.tripStatus !== 'COMPLETED');
     const matches = activeOnly.filter(
-      t => t.from.toLowerCase() === from.toLowerCase() && t.to.toLowerCase() === to.toLowerCase()
+      t => t.from?.trim().toLowerCase() === cleanFrom && t.to?.trim().toLowerCase() === cleanTo
     );
+
     setSearchedBuses(matches);
     setHasSearched(true);
   };
 
+  useEffect(() => {
+    loadFreshData(from, to);
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    loadFreshData(from, to);
+  };
+
+  // Sare unique cities collect karo (from static routes + active trips)
   const cities = Array.from(new Set([
-    "Sangamner", "Kopargaon", "Kolpewadi", "Shirdi", "Rahata", "Yeola",
-    ...routes.map(r => r.from),
-    ...routes.map(r => r.to),
-    ...allTrips.map(t => t.from),
-    ...allTrips.map(t => t.to)
-  ]));
+    "Kopargaon", "Sangamner", "Kolpewadi", "Shirdi", "Rahata", "Yeola",
+    ...routes.map(r => r.from?.trim()),
+    ...routes.map(r => r.to?.trim()),
+    ...allTrips.map(t => t.from?.trim()),
+    ...allTrips.map(t => t.to?.trim())
+  ].filter(Boolean)));
 
   return (
     <div className="min-w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
@@ -63,13 +71,27 @@ export default function Home() {
         <form onSubmit={handleSearch} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row gap-4 mb-8">
           <div className="flex-1">
             <label className="text-xs text-slate-400 font-semibold mb-1 block">FROM</label>
-            <select value={from} onChange={e => setFrom(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <select 
+              value={from} 
+              onChange={e => {
+                setFrom(e.target.value);
+                loadFreshData(e.target.value, to);
+              }} 
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+            >
               {cities.map(c => <option key={`from_${c}`} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="flex-1">
             <label className="text-xs text-slate-400 font-semibold mb-1 block">TO</label>
-            <select value={to} onChange={e => setTo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <select 
+              value={to} 
+              onChange={e => {
+                setTo(e.target.value);
+                loadFreshData(from, e.target.value);
+              }} 
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+            >
               {cities.map(c => <option key={`to_${c}`} value={c}>{c}</option>)}
             </select>
           </div>
@@ -90,14 +112,13 @@ export default function Home() {
 
             {searchedBuses.length === 0 ? (
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-                No active buses found between <b className="text-white">{from}</b> and <b className="text-white">{to}</b>. Start a trip from Driver Dashboard to publish one.
+                No active buses found between <b className="text-white">{from}</b> and <b className="text-white">{to}</b>.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {searchedBuses.map((bus) => (
                   <div key={bus.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
                     <div>
-                      {/* Top Bar */}
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <div className="text-xl font-black text-white tracking-wider">{bus.busNumber}</div>
@@ -108,13 +129,11 @@ export default function Home() {
                         </span>
                       </div>
 
-                      {/* Route */}
                       <div className="text-xs text-slate-400 flex items-center gap-1 mb-3">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                         <span>{bus.from} &rarr; {bus.to}</span>
                       </div>
 
-                      {/* Status Info */}
                       <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-3 my-2 text-xs flex justify-between items-center">
                         <span className="text-slate-400">Current: <b className="text-slate-200">{bus.currentLocation}</b></span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
@@ -123,7 +142,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Dynamic Action Buttons based on GPS Selection */}
                     <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
                       {bus.trackingSource === 'BUS_GPS' ? (
                         <div>
@@ -132,7 +150,7 @@ export default function Home() {
                             <span>This bus has hardware GPS active. Open official MSRTC app and search bus <b>{bus.busNumber}</b>.</span>
                           </div>
                           <button 
-                            onClick={() => alert(`Official MSRTC / Aapli ST integration demo:\nUse Bus Number: ${bus.busNumber} in official tracking.`)}
+                            onClick={() => alert(`Official MSRTC Demo:\nSearch Bus Number: ${bus.busNumber} on Aapli ST / MSRTC official app.`)}
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
                           >
                             <ExternalLink className="w-3.5 h-3.5" /> Check on MSRTC App (Use {bus.busNumber})
@@ -146,23 +164,14 @@ export default function Home() {
                           </div>
                           
                           <div className="grid grid-cols-2 gap-2">
-                            {bus.liveCoordinates ? (
-                              <a 
-                                href={`https://www.google.com/maps?q=${bus.liveCoordinates.lat},${bus.liveCoordinates.lng}`} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 text-center"
-                              >
-                                <Navigation className="w-3.5 h-3.5" /> Live Map Link
-                              </a>
-                            ) : (
-                              <button 
-                                onClick={() => navigate(`/bus/${bus.id}`)}
-                                className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 text-center"
-                              >
-                                <Navigation className="w-3.5 h-3.5" /> Live Map Link
-                              </button>
-                            )}
+                            <a 
+                              href={`https://www.google.com/maps?q=${bus.liveCoordinates?.lat || 19.8876},${bus.liveCoordinates?.lng || 74.4789}`} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 text-center"
+                            >
+                              <Navigation className="w-3.5 h-3.5" /> Live Map Link
+                            </a>
 
                             <button 
                               onClick={() => navigate(`/bus/${bus.id}`)} 
